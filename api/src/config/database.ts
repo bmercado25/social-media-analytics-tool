@@ -11,11 +11,17 @@ export const supabase: SupabaseClient = createClient(
   }
 );
 
-// Admin client for server-side operations (optional)
-export const supabaseAdmin = env.SUPABASE_SERVICE_ROLE_KEY
-  ? createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
-      auth: {
-        persistSession: false,
-      },
-    })
-  : null;
+// Admin client for server-side operations (bypasses RLS)
+if (!env.SUPABASE_SERVICE_ROLE_KEY) {
+  throw new Error('SUPABASE_SERVICE_ROLE_KEY is required for server-side operations');
+}
+
+export const supabaseAdmin: SupabaseClient = createClient(
+  env.SUPABASE_URL,
+  env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      persistSession: false,
+    },
+  }
+);

@@ -1,121 +1,42 @@
-import { Router, Request, Response } from 'express';
-import { supabase } from '../config/database.js';
+import { Router } from 'express';
+import {
+  getAllEntries,
+  getEntryById,
+  createEntry,
+  updateEntry,
+  deleteEntry,
+} from '../controllers/analytics.controller.js';
 
 const router = Router();
 
 /**
  * GET /api/analytics
- * Get all analytics data
+ * Get all data from test_table
  */
-router.get('/', async (req: Request, res: Response, next) => {
-  try {
-    const { data, error } = await supabase
-      .from('analytics')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      throw error;
-    }
-
-    res.json({ data });
-  } catch (error) {
-    next(error);
-  }
-});
+router.get('/', getAllEntries);
 
 /**
  * GET /api/analytics/:id
- * Get analytics by ID
+ * Get data by ID
  */
-router.get('/:id', async (req: Request, res: Response, next) => {
-  try {
-    const { id } = req.params;
-
-    const { data, error } = await supabase
-      .from('analytics')
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (error) {
-      throw error;
-    }
-
-    res.json({ data });
-  } catch (error) {
-    next(error);
-  }
-});
+router.get('/:id', getEntryById);
 
 /**
  * POST /api/analytics
- * Create new analytics entry
+ * Create new entry
  */
-router.post('/', async (req: Request, res: Response, next) => {
-  try {
-    const { data, error } = await supabase
-      .from('analytics')
-      .insert(req.body)
-      .select()
-      .single();
-
-    if (error) {
-      throw error;
-    }
-
-    res.status(201).json({ data });
-  } catch (error) {
-    next(error);
-  }
-});
+router.post('/', createEntry);
 
 /**
  * PUT /api/analytics/:id
- * Update analytics entry
+ * Update entry
  */
-router.put('/:id', async (req: Request, res: Response, next) => {
-  try {
-    const { id } = req.params;
-
-    const { data, error } = await supabase
-      .from('analytics')
-      .update(req.body)
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) {
-      throw error;
-    }
-
-    res.json({ data });
-  } catch (error) {
-    next(error);
-  }
-});
+router.put('/:id', updateEntry);
 
 /**
  * DELETE /api/analytics/:id
- * Delete analytics entry
+ * Delete entry
  */
-router.delete('/:id', async (req: Request, res: Response, next) => {
-  try {
-    const { id } = req.params;
-
-    const { error } = await supabase
-      .from('analytics')
-      .delete()
-      .eq('id', id);
-
-    if (error) {
-      throw error;
-    }
-
-    res.status(204).send();
-  } catch (error) {
-    next(error);
-  }
-});
+router.delete('/:id', deleteEntry);
 
 export default router;

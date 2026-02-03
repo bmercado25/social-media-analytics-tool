@@ -1,29 +1,52 @@
 import { useState, useEffect } from 'react';
 import { apiClient } from './config/api';
 
-interface AnalyticsData {
+interface TestTableData {
   id: string;
   [key: string]: any;
 }
 
 function App() {
-  const [data, setData] = useState<AnalyticsData[]>([]);
+  const [data, setData] = useState<TestTableData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState<{
+    connected: boolean;
+    message: string;
+    rowCount?: number;
+  } | null>(null);
 
   useEffect(() => {
-    fetchAnalytics();
+    testConnection();
+    fetchData();
   }, []);
 
-  const fetchAnalytics = async () => {
+  const testConnection = async () => {
+    try {
+      const response = await apiClient.get('/api/test-connection');
+      setConnectionStatus({
+        connected: response.data.success,
+        message: response.data.message,
+        rowCount: response.data.rowCount,
+      });
+    } catch (err: any) {
+      setConnectionStatus({
+        connected: false,
+        message: err.response?.data?.message || 'Connection test failed',
+      });
+      console.error('Connection test error:', err);
+    }
+  };
+
+  const fetchData = async () => {
     try {
       setLoading(true);
       setError(null);
       const response = await apiClient.get('/api/analytics');
       setData(response.data.data || []);
     } catch (err: any) {
-      setError(err.response?.data?.error?.message || 'Failed to fetch analytics');
-      console.error('Error fetching analytics:', err);
+      setError(err.response?.data?.error?.message || err.message || 'Failed to fetch data');
+      console.error('Error fetching data:', err);
     } finally {
       setLoading(false);
     }
@@ -36,9 +59,28 @@ function App() {
         <p>Connected to Supabase via API</p>
       </header>
 
-      <div style={{ marginBottom: '1rem' }}>
+      {/* Connection Status */}
+      {connectionStatus && (
+        <div
+          style={{
+            padding: '1rem',
+            backgroundColor: connectionStatus.connected ? '#d4edda' : '#f8d7da',
+            color: connectionStatus.connected ? '#155724' : '#721c24',
+            borderRadius: '4px',
+            marginBottom: '1rem',
+            border: `1px solid ${connectionStatus.connected ? '#c3e6cb' : '#f5c6cb'}`,
+          }}
+        >
+          <strong>Supabase Connection:</strong> {connectionStatus.message}
+          {connectionStatus.rowCount !== undefined && (
+            <span> | Table has {connectionStatus.rowCount} row(s)</span>
+          )}
+        </div>
+      )}
+
+      <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem' }}>
         <button
-          onClick={fetchAnalytics}
+          onClick={fetchData}
           disabled={loading}
           style={{
             padding: '0.5rem 1rem',
@@ -50,6 +92,19 @@ function App() {
           }}
         >
           {loading ? 'Loading...' : 'Refresh Data'}
+        </button>
+        <button
+          onClick={testConnection}
+          style={{
+            padding: '0.5rem 1rem',
+            backgroundColor: '#28a745',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+          }}
+        >
+          Test Connection
         </button>
       </div>
 
@@ -63,28 +118,33 @@ function App() {
             marginBottom: '1rem',
           }}
         >
-          Error: {error}
+          <strong>Error:</strong> {error}
         </div>
       )}
 
-      {loading && <p>Loading analytics data...</p>}
+      {loading && <p>Loading data from test_table...</p>}
 
       {!loading && !error && (
         <div>
-          <h2>Analytics Data ({data.length} items)</h2>
+          <h2>Data from test_table ({data.length} items)</h2>
           {data.length === 0 ? (
-            <p>No data available. Make sure your Supabase table is set up correctly.</p>
+            <p style={{ padding: '1rem', backgroundColor: '#fff3cd', borderRadius: '4px' }}>
+              No data available. The table exists but is empty. You can add data through Supabase dashboard or API.
+            </p>
           ) : (
-            <pre
+            <div
               style={{
                 backgroundColor: '#f5f5f5',
                 padding: '1rem',
                 borderRadius: '4px',
                 overflow: 'auto',
+                maxHeight: '600px',
               }}
             >
-              {JSON.stringify(data, null, 2)}
-            </pre>
+              <pre style={{ margin: 0, fontSize: '0.9rem' }}>
+                {JSON.stringify(data, null, 2)}
+              </pre>
+            </div>
           )}
         </div>
       )}

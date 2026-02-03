@@ -8,7 +8,7 @@ const envSchema = z.object({
   PORT: z.string().transform(Number).default('3001'),
   SUPABASE_URL: z.string().url(),
   SUPABASE_ANON_KEY: z.string().min(1),
-  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).optional(),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1), // Required for server-side operations
 });
 
 export const env = envSchema.parse(process.env);

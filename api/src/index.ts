@@ -2,6 +2,8 @@ import express, { Express } from 'express';
 import cors from 'cors';
 import { env } from './config/env.js';
 import analyticsRoutes from './routes/analytics.routes.js';
+import healthRoutes from './routes/health.routes.js';
+import testRoutes from './routes/test.routes.js';
 import { errorHandler, notFoundHandler } from './middleware/error.middleware.js';
 
 const app: Express = express();
@@ -11,16 +13,9 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Health check
-app.get('/health', (req, res) => {
-  res.json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    environment: env.NODE_ENV,
-  });
-});
-
-// API Routes
+// Routes
+app.use('/health', healthRoutes);
+app.use('/api', testRoutes); // /api/test-connection
 app.use('/api/analytics', analyticsRoutes);
 
 // Error handling
