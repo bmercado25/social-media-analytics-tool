@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { apiClient } from './config/api';
+import { DataTable, Column } from './components/DataTable';
 
 interface TestTableData {
   id: string;
@@ -127,25 +128,22 @@ function App() {
       {!loading && !error && (
         <div>
           <h2>Data from test_table ({data.length} items)</h2>
-          {data.length === 0 ? (
-            <p style={{ padding: '1rem', backgroundColor: '#fff3cd', borderRadius: '4px' }}>
-              No data available. The table exists but is empty. You can add data through Supabase dashboard or API.
-            </p>
-          ) : (
-            <div
-              style={{
-                backgroundColor: '#f5f5f5',
-                padding: '1rem',
-                borderRadius: '4px',
-                overflow: 'auto',
-                maxHeight: '600px',
-              }}
-            >
-              <pre style={{ margin: 0, fontSize: '0.9rem' }}>
-                {JSON.stringify(data, null, 2)}
-              </pre>
-            </div>
-          )}
+          <DataTable
+            data={data}
+            tableName="test_table"
+            onActionClick={(row) => {
+              console.log('Action clicked for row:', row);
+              // Action handler will be implemented later
+              alert(`Action clicked for row ID: ${row.id || 'N/A'}`);
+            }}
+            actionLabel="Actions"
+            // Optional: Define custom columns
+            // columns={[
+            //   { key: 'id', label: 'ID' },
+            //   { key: 'name', label: 'Name' },
+            //   { key: 'created_at', label: 'Created At', render: (value) => new Date(value).toLocaleString() },
+            // ]}
+          />
         </div>
       )}
 
