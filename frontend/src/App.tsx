@@ -195,56 +195,6 @@ function App() {
           <DataTable
             data={data}
             tableName="youtube_videos"
-            columns={[
-              {
-                key: 'thumbnail_url',
-                label: 'Thumbnail',
-                render: (url) => url ? (
-                  <img 
-                    src={url} 
-                    alt="Video thumbnail" 
-                    style={{ width: '120px', height: '68px', objectFit: 'cover', borderRadius: '4px' }}
-                  />
-                ) : '—'
-              },
-              {
-                key: 'title',
-                label: 'Title',
-                render: (title) => (
-                  <span style={{ fontWeight: 500 }}>{title || '—'}</span>
-                )
-              },
-              {
-                key: 'published_at',
-                label: 'Published',
-                render: (date) => date ? new Date(date).toLocaleDateString() : '—'
-              },
-              {
-                key: 'view_count',
-                label: 'Views',
-                render: (count) => count?.toLocaleString() || '0'
-              },
-              {
-                key: 'like_count',
-                label: 'Likes',
-                render: (count) => count?.toLocaleString() || '0'
-              },
-              {
-                key: 'comment_count',
-                label: 'Comments',
-                render: (count) => count?.toLocaleString() || '0'
-              },
-              {
-                key: 'engagement_rate',
-                label: 'Engagement',
-                render: (rate) => rate ? `${(rate * 100).toFixed(2)}%` : '—'
-              },
-              {
-                key: 'days_since_published',
-                label: 'Age (days)',
-                render: (days) => days || '0'
-              },
-            ]}
             onActionClick={(row) => {
               console.log('Action clicked for video:', row);
               // Action handler will be implemented later
