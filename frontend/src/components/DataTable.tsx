@@ -10,6 +10,7 @@ interface DataTableProps {
   data: any[];
   columns?: Column[];
   onActionClick?: (row: any) => void;
+  onRowClick?: (row: any) => void;
   actionLabel?: string;
   tableName?: string;
 }
@@ -39,6 +40,7 @@ export const DataTable: React.FC<DataTableProps> = ({
   data,
   columns,
   onActionClick,
+  onRowClick,
   actionLabel = 'Actions',
   tableName,
 }) => {
@@ -400,12 +402,19 @@ export const DataTable: React.FC<DataTableProps> = ({
               style={{
                 borderBottom: '1px solid #dee2e6',
                 transition: 'background-color 0.2s',
+                cursor: onRowClick ? 'pointer' : 'default',
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.backgroundColor = '#f8f9fa';
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.backgroundColor = 'white';
+              }}
+              onClick={(e) => {
+                // Don't trigger row click if clicking on action button
+                if (onRowClick && !(e.target as HTMLElement).closest('button')) {
+                  onRowClick(row);
+                }
               }}
             >
               {visibleColumns.map((column) => (

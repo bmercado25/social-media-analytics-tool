@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { apiClient } from './config/api';
 import { DataTable } from './components/DataTable';
 import { VideoEmbeddingsEditor } from './components/VideoEmbeddingsEditor';
+import { VideoDetailView } from './components/VideoDetailView';
+import { AnalyticsDashboard } from './components/AnalyticsDashboard';
 
 interface YouTubeVideo {
   id: string;
@@ -30,6 +32,8 @@ function App() {
     rowCount?: number;
   } | null>(null);
   const [selectedVideo, setSelectedVideo] = useState<YouTubeVideo | null>(null);
+  const [detailVideo, setDetailVideo] = useState<YouTubeVideo | null>(null);
+  const [activeTab, setActiveTab] = useState<'table' | 'analytics'>('table');
 
   useEffect(() => {
     testConnection();
@@ -189,20 +193,76 @@ function App() {
         </div>
       )}
 
+      {/* Tabs */}
+      <div
+        style={{
+          display: 'flex',
+          gap: '0.5rem',
+          marginBottom: '1.5rem',
+          borderBottom: '2px solid #dee2e6',
+        }}
+      >
+        <button
+          onClick={() => setActiveTab('table')}
+          style={{
+            padding: '0.75rem 1.5rem',
+            backgroundColor: 'transparent',
+            color: activeTab === 'table' ? '#007bff' : '#6c757d',
+            border: 'none',
+            borderBottom: activeTab === 'table' ? '3px solid #007bff' : '3px solid transparent',
+            cursor: 'pointer',
+            fontSize: '1rem',
+            fontWeight: activeTab === 'table' ? 600 : 400,
+            transition: 'all 0.2s',
+            marginBottom: '-2px',
+          }}
+        >
+          📊 Table View
+        </button>
+        <button
+          onClick={() => setActiveTab('analytics')}
+          style={{
+            padding: '0.75rem 1.5rem',
+            backgroundColor: 'transparent',
+            color: activeTab === 'analytics' ? '#007bff' : '#6c757d',
+            border: 'none',
+            borderBottom: activeTab === 'analytics' ? '3px solid #007bff' : '3px solid transparent',
+            cursor: 'pointer',
+            fontSize: '1rem',
+            fontWeight: activeTab === 'analytics' ? 600 : 400,
+            transition: 'all 0.2s',
+            marginBottom: '-2px',
+          }}
+        >
+          📈 Analytics Dashboard
+        </button>
+      </div>
+
       {loading && <p>Loading YouTube videos...</p>}
 
       {!loading && !error && (
-        <div>
-          <h2>YouTube Shorts ({data.length} videos)</h2>
-          <DataTable
-            data={data}
-            tableName="youtube_videos"
-            onActionClick={(row) => {
-              setSelectedVideo(row);
-            }}
-            actionLabel="Edit Embeddings"
-          />
-        </div>
+        <>
+          {activeTab === 'table' && (
+            <div>
+              <h2>YouTube Shorts ({data.length} videos)</h2>
+              <DataTable
+                data={data}
+                tableName="youtube_videos"
+                onRowClick={(row) => {
+                  setDetailVideo(row);
+                }}
+                onActionClick={(row) => {
+                  setSelectedVideo(row);
+                }}
+                actionLabel="Edit Embeddings"
+              />
+            </div>
+          )}
+
+          {activeTab === 'analytics' && (
+            <AnalyticsDashboard videos={data} />
+          )}
+        </>
       )}
 
       <div style={{ marginTop: '2rem', padding: '1rem', backgroundColor: '#e9ecef', borderRadius: '4px' }}>
@@ -220,6 +280,13 @@ function App() {
             // Optionally refresh data or show a success message
             console.log('Embedding updated for video:', selectedVideo.video_id);
           }}
+        />
+      )}
+
+      {detailVideo && (
+        <VideoDetailView
+          video={detailVideo}
+          onClose={() => setDetailVideo(null)}
         />
       )}
     </div>
