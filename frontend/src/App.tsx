@@ -272,7 +272,7 @@ function App() {
             marginBottom: '-2px',
           }}
         >
-          📝 Pending Scripts
+          Pending Scripts
         </button>
       </div>
 
