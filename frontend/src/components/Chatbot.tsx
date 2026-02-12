@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { apiClient } from '../config/api';
 
 interface ChatbotProps {
@@ -10,6 +12,13 @@ interface ChatMessage {
   content: string;
 }
 
+interface ChatSession {
+  id: string;
+  title: string;
+  history: ChatMessage[];
+  updated_at: string;
+}
+
 const Chatbot: React.FC<ChatbotProps> = ({ videos }) => {
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -18,8 +27,90 @@ const Chatbot: React.FC<ChatbotProps> = ({ videos }) => {
   const [error, setError] = useState<string | null>(null);
   const [showVideoSelector, setShowVideoSelector] = useState(true);
   const [sortBy, setSortBy] = useState<'none' | 'views-desc' | 'views-asc' | 'engagement-desc' | 'engagement-asc'>('views-desc');
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Fetch sessions on mount
+  useEffect(() => {
+    fetchSessions();
+  }, []);
+
+  const fetchSessions = async () => {
+    try {
+      const response = await apiClient.get('/api/chat/sessions');
+      if (response.data.success) {
+        setSessions(response.data.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch sessions:', err);
+    }
+  };
+
+  const saveSession = async (updatedMessages: ChatMessage[]) => {
+    if (updatedMessages.length === 0) return;
+    
+    setIsSaving(true);
+    try {
+      // Use the first user message as the title
+      const firstUserMsg = updatedMessages.find(m => m.role === 'user');
+      const title = firstUserMsg 
+        ? (firstUserMsg.content.length > 40 ? firstUserMsg.content.substring(0, 40) + '...' : firstUserMsg.content)
+        : 'New Conversation';
+
+      const response = await apiClient.post('/api/chat/sessions', {
+        id: currentSessionId,
+        title,
+        history: updatedMessages
+      });
+
+      if (response.data.success) {
+        const savedSession = response.data.data;
+        if (!currentSessionId) {
+          setCurrentSessionId(savedSession.id);
+        }
+        // Refresh sessions list
+        fetchSessions();
+      }
+    } catch (err) {
+      console.error('Failed to save session:', err);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const loadSession = (session: ChatSession) => {
+    setCurrentSessionId(session.id);
+    setMessages(session.history);
+    setError(null);
+  };
+
+  const startNewChat = () => {
+    setCurrentSessionId(null);
+    setMessages([]);
+    setError(null);
+    setInput('');
+  };
+
+  const deleteSession = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    if (!confirm('Are you sure you want to delete this conversation?')) return;
+
+    try {
+      const response = await apiClient.delete(`/api/chat/sessions/${id}`);
+      if (response.data.success) {
+        if (currentSessionId === id) {
+          startNewChat();
+        }
+        fetchSessions();
+      }
+    } catch (err) {
+      console.error('Failed to delete session:', err);
+    }
+  };
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -86,7 +177,10 @@ const Chatbot: React.FC<ChatbotProps> = ({ videos }) => {
           role: 'assistant',
           content: response.data.data.message,
         };
-        setMessages([...updatedMessages, assistantMessage]);
+        const finalMessages = [...updatedMessages, assistantMessage];
+        setMessages(finalMessages);
+        // Auto-save the session
+        saveSession(finalMessages);
       } else {
         setError(response.data.error?.message || 'Something went wrong');
       }
@@ -109,59 +203,177 @@ const Chatbot: React.FC<ChatbotProps> = ({ videos }) => {
     }
   };
 
-  const clearChat = () => {
-    setMessages([]);
-    setError(null);
-  };
-
   return (
-    <div style={{ 
-      padding: '1.5rem', 
-      display: 'flex', 
-      flexDirection: 'column', 
-      height: 'calc(100vh - 200px)', 
-      minHeight: '700px',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif'
-    }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-        <h2 style={{ fontSize: '1.75rem', fontWeight: 600, color: '#c9d1d9', margin: 0 }}>
-          Marketing Chatbot
-        </h2>
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
+    <div style={{ display: 'flex', height: 'calc(100vh - 120px)', backgroundColor: '#0d1117' }}>
+      {/* Session Sidebar */}
+      <div 
+        style={{ 
+          width: '280px', 
+          borderRight: '1px solid #30363d', 
+          display: 'flex', 
+          flexDirection: 'column',
+          backgroundColor: '#161b22'
+        }}
+      >
+        <div style={{ padding: '1.25rem', borderBottom: '1px solid #30363d' }}>
           <button
-            onClick={() => setShowVideoSelector(!showVideoSelector)}
+            onClick={startNewChat}
             style={{
-              padding: '0.5rem 1rem',
-              backgroundColor: showVideoSelector ? '#1f6feb' : '#21262d',
+              width: '100%',
+              padding: '0.75rem',
+              backgroundColor: 'transparent',
               color: '#c9d1d9',
               border: '1px solid #30363d',
               borderRadius: '6px',
               cursor: 'pointer',
-              fontSize: '0.875rem',
+              fontSize: '0.9rem',
               fontWeight: 500,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.5rem',
               transition: 'all 0.2s'
             }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#21262d'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
           >
-            {showVideoSelector ? 'Hide' : 'Show'} Context ({selectedVideoIds.size})
-          </button>
-          <button
-            onClick={clearChat}
-            style={{
-              padding: '0.5rem 1rem',
-              backgroundColor: '#21262d',
-              color: '#c9d1d9',
-              border: '1px solid #30363d',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '0.875rem',
-              fontWeight: 500,
-              transition: 'all 0.2s'
-            }}
-          >
-            Clear Chat
+            <span style={{ fontSize: '1.2rem' }}>+</span> New Chat
           </button>
         </div>
+
+        <div style={{ flex: 1, overflowY: 'auto', padding: '0.75rem' }}>
+          <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#8b949e', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '0.75rem', paddingLeft: '0.5rem' }}>
+            Previous Chats
+          </div>
+          {sessions.length === 0 ? (
+            <div style={{ padding: '1rem', color: '#484f58', fontSize: '0.85rem', textAlign: 'center' }}>
+              No history yet
+            </div>
+          ) : (
+            sessions.map((session) => (
+              <div
+                key={session.id}
+                onClick={() => loadSession(session)}
+                style={{
+                  padding: '0.75rem',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  marginBottom: '0.25rem',
+                  backgroundColor: currentSessionId === session.id ? '#1f6feb22' : 'transparent',
+                  border: `1px solid ${currentSessionId === session.id ? '#1f6feb44' : 'transparent'}`,
+                  transition: 'all 0.15s',
+                  position: 'relative',
+                  group: 'true'
+                } as any}
+                onMouseEnter={(e) => {
+                  if (currentSessionId !== session.id) {
+                    e.currentTarget.style.backgroundColor = '#21262d';
+                  }
+                  const delBtn = e.currentTarget.querySelector('.delete-session-btn') as HTMLElement;
+                  if (delBtn) delBtn.style.opacity = '1';
+                }}
+                onMouseLeave={(e) => {
+                  if (currentSessionId !== session.id) {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }
+                  const delBtn = e.currentTarget.querySelector('.delete-session-btn') as HTMLElement;
+                  if (delBtn) delBtn.style.opacity = '0';
+                }}
+              >
+                <div style={{ 
+                  color: currentSessionId === session.id ? '#58a6ff' : '#c9d1d9', 
+                  fontSize: '0.875rem', 
+                  fontWeight: 500,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  paddingRight: '1.5rem'
+                }}>
+                  {session.title}
+                </div>
+                <div style={{ color: '#8b949e', fontSize: '0.7rem', marginTop: '0.25rem' }}>
+                  {new Date(session.updated_at).toLocaleDateString()}
+                </div>
+                <button
+                  className="delete-session-btn"
+                  onClick={(e) => deleteSession(e, session.id)}
+                  style={{
+                    position: 'absolute',
+                    right: '0.5rem',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    color: '#8b949e',
+                    cursor: 'pointer',
+                    fontSize: '1.1rem',
+                    opacity: 0,
+                    transition: 'all 0.2s',
+                    padding: '0.25rem',
+                    lineHeight: 1
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.color = '#ff7b72'}
+                  onMouseLeave={(e) => e.currentTarget.style.color = '#8b949e'}
+                >
+                  ×
+                </button>
+              </div>
+            ))
+          )}
+        </div>
       </div>
+
+      {/* Main Chat Area */}
+      <div style={{ 
+        flex: 1,
+        padding: '1.5rem', 
+        display: 'flex', 
+        flexDirection: 'column', 
+        height: '100%',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif',
+        maxWidth: '1200px',
+        margin: '0 auto'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+          <h2 style={{ fontSize: '1.75rem', fontWeight: 600, color: '#c9d1d9', margin: 0 }}>
+            Marketing Chatbot
+            {isSaving && <span style={{ fontSize: '0.8rem', color: '#8b949e', marginLeft: '1rem', fontWeight: 400 }}>Saving...</span>}
+          </h2>
+          <div style={{ display: 'flex', gap: '0.75rem' }}>
+            <button
+              onClick={() => setShowVideoSelector(!showVideoSelector)}
+              style={{
+                padding: '0.5rem 1rem',
+                backgroundColor: showVideoSelector ? '#1f6feb' : '#21262d',
+                color: '#c9d1d9',
+                border: '1px solid #30363d',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '0.875rem',
+                fontWeight: 500,
+                transition: 'all 0.2s'
+              }}
+            >
+              {showVideoSelector ? 'Hide' : 'Show'} Context ({selectedVideoIds.size})
+            </button>
+            <button
+              onClick={startNewChat}
+              style={{
+                padding: '0.5rem 1rem',
+                backgroundColor: '#21262d',
+                color: '#c9d1d9',
+                border: '1px solid #30363d',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '0.875rem',
+                fontWeight: 500,
+                transition: 'all 0.2s'
+              }}
+            >
+              New Chat
+            </button>
+          </div>
+        </div>
 
       {/* Video Context Selector (collapsible) */}
       {showVideoSelector && (
@@ -302,12 +514,14 @@ const Chatbot: React.FC<ChatbotProps> = ({ videos }) => {
           border: '1px solid #30363d',
           borderRadius: '8px',
           backgroundColor: '#0d1117',
-          padding: '20rem',
+          padding: '1.5rem',
           marginBottom: '1rem',
           display: 'flex',
           flexDirection: 'column',
           gap: '1rem',
-          boxShadow: 'inset 0 2px 10px rgba(0,0,0,0.2)'
+          boxShadow: 'inset 0 2px 10px rgba(0,0,0,0.2)',
+          paddingTop: '20rem',
+          paddingBottom: '20rem',
         }}
       >
         {messages.length === 0 && !loading && (
@@ -340,7 +554,6 @@ const Chatbot: React.FC<ChatbotProps> = ({ videos }) => {
                 color: '#ffffff',
                 fontSize: '0.9375rem',
                 lineHeight: '1.6',
-                whiteSpace: 'pre-wrap',
                 wordBreak: 'break-word',
                 border: msg.role === 'user' ? '1px solid #069153' : '1px solid #30363d',
                 boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
@@ -351,7 +564,30 @@ const Chatbot: React.FC<ChatbotProps> = ({ videos }) => {
                   AI Strategist
                 </div>
               )}
-              {msg.content}
+              <ReactMarkdown 
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  p: ({node, ...props}) => <p style={{ margin: '0 0 0.5rem 0' }} {...props} />,
+                  ul: ({node, ...props}) => <ul style={{ margin: '0.5rem 0', paddingLeft: '1.5rem' }} {...props} />,
+                  ol: ({node, ...props}) => <ol style={{ margin: '0.5rem 0', paddingLeft: '1.5rem' }} {...props} />,
+                  li: ({node, ...props}) => <li style={{ marginBottom: '0.25rem' }} {...props} />,
+                  code: ({node, ...props}) => (
+                    <code 
+                      style={{ 
+                        backgroundColor: msg.role === 'user' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.3)', 
+                        padding: '0.2rem 0.4rem', 
+                        borderRadius: '4px',
+                        fontSize: '0.85em',
+                        fontFamily: 'monospace'
+                      }} 
+                      {...props} 
+                    />
+                  ),
+                  strong: ({node, ...props}) => <strong style={{ fontWeight: 700, color: '#fff' }} {...props} />,
+                }}
+              >
+                {msg.content}
+              </ReactMarkdown>
             </div>
           </div>
         ))}
@@ -468,6 +704,7 @@ const Chatbot: React.FC<ChatbotProps> = ({ videos }) => {
         </div>
       </div>
     </div>
+  </div>
   );
 };
 
