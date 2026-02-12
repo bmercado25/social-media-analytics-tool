@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { apiClient } from '../config/api';
+import Whiteboard from './Whiteboard';
 
 interface PendingEmbedding {
   id: string;
@@ -26,6 +27,7 @@ export const PendingEmbeddings: React.FC = () => {
   const [selectedVideoId, setSelectedVideoId] = useState<string>('');
   const [assigningId, setAssigningId] = useState<string | null>(null);
   const [previewData, setPreviewData] = useState<PendingEmbedding | null>(null);
+  const [showWhiteboard, setShowWhiteboard] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -182,32 +184,65 @@ export const PendingEmbeddings: React.FC = () => {
         <h2 style={{ fontSize: '1.75rem', fontWeight: 600, color: '#c9d1d9', margin: 0 }}>
           Pending Scripts ({embeddings.length})
         </h2>
-        <button
-          onClick={handleCreateNew}
-          style={{
-            padding: '0.6rem 1.25rem',
-            backgroundColor: '#A02B2B',
-            color: 'white',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            fontSize: '0.9rem',
-            fontWeight: 600,
-            transition: 'all 0.2s',
-            boxShadow: '0 2px 8px rgba(35, 134, 54, 0.2)'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#2ea043';
-            e.currentTarget.style.transform = 'translateY(-1px)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = '#A02B2B';
-            e.currentTarget.style.transform = 'translateY(0)';
-          }}
-        >
-          + Create New Script
-        </button>
+        <div style={{ display: 'flex', gap: '1rem' }}>
+          <button
+            onClick={() => setShowWhiteboard(!showWhiteboard)}
+            style={{
+              padding: '0.1rem 1rem',
+              backgroundColor: '#21262d',
+              color: '#c9d1d9',
+              border: showWhiteboard ? '#1f6feb' : '#30363d',
+              borderRadius: '30px',
+              cursor: 'pointer',
+              fontSize: '0.7rem',
+              fontWeight: 600,
+              transition: 'all 0.2s',
+            }}
+          >
+            {showWhiteboard ? 'Hide' : 'Show'} Whiteboard
+          </button>
+          <button
+            onClick={handleCreateNew}
+            style={{
+              padding: '0.6rem 1.25rem',
+              backgroundColor: '#A02B2B',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '0.9rem',
+              fontWeight: 600,
+              transition: 'all 0.2s',
+              boxShadow: '0 2px 8px rgba(35, 134, 54, 0.2)'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#2ea043';
+              e.currentTarget.style.transform = 'translateY(-1px)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '#A02B2B';
+              e.currentTarget.style.transform = 'translateY(0)';
+            }}
+          >
+            + Create New Script
+          </button>
+        </div>
       </div>
+
+      {showWhiteboard && (
+        <div style={{ marginBottom: '3rem' }}>
+          <div style={{ 
+            marginBottom: '1rem', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'space-between'
+          }}>
+            <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#c9d1d9' }}>Idea Whiteboard</h3>
+            <span style={{ fontSize: '0.8rem', color: '#8b949e' }}>Drag notes to organize thoughts</span>
+          </div>
+          <Whiteboard />
+        </div>
+      )}
 
       {error && (
         <div
